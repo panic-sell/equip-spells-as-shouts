@@ -1,0 +1,9 @@
+.vs/
+.vscode/*
+!.vscode/launch.json
+.resources/
+build/
+cmake/dirs.cmake
+dist/**/*.bbcode
+dist/**/*.dll
+dist/**/*.zip

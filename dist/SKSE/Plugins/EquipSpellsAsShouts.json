@@ -1,0 +1,29 @@
+{
+    // trace
+    // debug
+    // info (default)
+    // warning
+    // error
+    // critical
+    // off
+    "log_level": "info",
+
+    // Default: Shift + Equals Sign
+    // Key names can be found at the following link (names are case-sensitive):
+    // TODO
+    "convert_spell_keysets": [
+        ["LShift", "="],
+        ["RShift", "="],
+    ],
+
+    // Default: Shift + Minus Sign
+    // Uses the same key names as convert_spell_keysets.
+    "remove_shout_keysets": [
+        ["LShift", "-"],
+        ["RShift", "-"],
+    ],
+
+    // Default: false
+    // Whether 2-handed spells can be converted to shouts.
+    "allow_2h_spells": false,
+}

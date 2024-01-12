@@ -1,0 +1,20 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+    "name": "esas",
+    "version": "0.0.0",
+    "dependencies": [
+        "clibng",
+        "boost-json",
+        "catch2"
+    ],
+    "vcpkg-configuration": {
+        "default-registry": {
+            "kind": "git",
+            "repository": "https://github.com/microsoft/vcpkg.git",
+            "baseline": "ce46ba8777d8f899d8dc11afefb8eca39293df39"
+        },
+        "overlay-ports": [
+            "cmake/ports"
+        ]
+    }
+}
