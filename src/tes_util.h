@@ -187,20 +187,34 @@ GetEquippedShout(const RE::Actor& actor) {
     return form ? form->As<RE::TESShout>() : nullptr;
 }
 
+inline RE::HighProcessData*
+GetHighProcessData(RE::Actor& player) {
+    auto* process = player.GetActorRuntimeData().currentProcess;
+    return process ? process->high : nullptr;
+}
+
 inline bool
-CanCast(RE::MagicCaster& caster, RE::SpellItem& spell, bool ignore_magicka = false) {
+CheckCast(
+    RE::MagicCaster& caster,
+    RE::SpellItem& spell,
+    std::span<const RE::MagicSystem::CannotCastReason> ignored_reasons = {}
+) {
     auto reason = RE::MagicSystem::CannotCastReason::kOK;
-    auto res = caster.CheckCast(
-        &spell,
-        /*a_dualCast=*/false,
-        /*a_alchStrength=*/nullptr,
-        &reason,
-        /*a_useBaseValueForCost=*/false
-    );
-    if (res || !ignore_magicka) {
-        return res;
+    if (caster.CheckCast(
+            &spell,
+            /*a_dualCast=*/false,
+            /*a_alchStrength=*/nullptr,
+            &reason,
+            /*a_useBaseValueForCost=*/false
+        )) {
+        return true;
     }
-    return reason == RE::MagicSystem::CannotCastReason::kMagicka;
+    for (auto ignore : ignored_reasons) {
+        if (reason == ignore) {
+            return true;
+        }
+    }
+    return false;
 }
 
 inline bool

@@ -42,32 +42,22 @@ GetShoutButtonInput(const RE::InputEvent* events) {
 
 }  // namespace internal
 
-class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
-                         public RE::BSTEventSink<RE::TESSpellCastEvent> {
+class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
   public:
     [[nodiscard]] static bool
     Init(std::mutex& mutex, Shoutmap& map, const Settings& settings) {
         auto* action_ev_src = SKSE::GetActionEventSource();
-        auto* spellcast_ev_src = RE::ScriptEventSourceHolder::GetSingleton();
-        if (!action_ev_src || !spellcast_ev_src) {
+        if (!action_ev_src) {
             return false;
         }
 
         static auto instance = FafHandler(mutex, map, settings);
         action_ev_src->AddEventSink(&instance);
-        spellcast_ev_src->AddEventSink<RE::TESSpellCastEvent>(&instance);
         return true;
     }
 
     RE::BSEventNotifyControl
     ProcessEvent(const SKSE::ActionEvent* event, RE::BSTEventSource<SKSE::ActionEvent>*) override {
-        Queue(event);
-        return RE::BSEventNotifyControl::kContinue;
-    }
-
-    RE::BSEventNotifyControl
-    ProcessEvent(const RE::TESSpellCastEvent* event, RE::BSTEventSource<RE::TESSpellCastEvent>*)
-        override {
         Cast(event);
         return RE::BSEventNotifyControl::kContinue;
     }
@@ -84,7 +74,7 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
     FafHandler& operator=(FafHandler&&) = delete;
 
     void
-    Queue(const SKSE::ActionEvent* event) {
+    Cast(const SKSE::ActionEvent* event) {
         if (!event || event->type != SKSE::ActionEvent::Type::kVoiceFire) {
             return;
         }
@@ -92,12 +82,15 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
         if (!player || !player->IsPlayerRef()) {
             return;
         }
+        auto* high_data = tes_util::GetHighProcessData(*player);
+        if (!high_data) {
+            return;
+        }
+
         auto* shout = event->sourceForm ? event->sourceForm->As<RE::TESShout>() : nullptr;
         if (!shout) {
             return;
         }
-        Clear();
-
         RE::SpellItem* spell = nullptr;
         {
             auto lock = std::lock_guard(mutex_);
@@ -111,76 +104,46 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
             return;
         }
 
-        queued_shout_ = shout;
-        queued_spell_ = spell;
-    }
-
-    void
-    Cast(const RE::TESSpellCastEvent* event) {
-        if (!event->object || !event->object->IsPlayerRef()) {
-            return;
-        }
-        if (!queued_shout_ || !queued_spell_) {
-            return;
-        }
-
-        size_t var = 0;
-        for (; var < RE::TESShout::VariationID::kTotal; var++) {
-            const auto* shout_spell = queued_shout_->variations[var].spell;
-            if (shout_spell && shout_spell->GetFormID() == event->spell) {
-                break;
-            }
-        }
-        if (var >= RE::TESShout::VariationID::kTotal) {
-            return;
-        }
-        // At this point, we know for sure the TESSpellCastEvent corresponds to a spell shout cast.
-
         auto casting_src = RE::MagicSystem::CastingSource::kInstant;
         // Bound weapon must be cast from hands.
-        if (const auto* av_eff = queued_spell_->GetAVEffect();
+        if (const auto* av_eff = spell->GetAVEffect();
             av_eff && av_eff->GetArchetype() == RE::EffectArchetypes::ArchetypeID::kBoundWeapon) {
-            casting_src = var == 0 ? RE::MagicSystem::CastingSource::kRightHand
-                                   : RE::MagicSystem::CastingSource::kLeftHand;
+            casting_src = high_data->currentShoutVariation == RE::TESShout::VariationID::kOne
+                              ? RE::MagicSystem::CastingSource::kRightHand
+                              : RE::MagicSystem::CastingSource::kLeftHand;
         }
 
-        auto* player = RE::PlayerCharacter::GetSingleton();
         auto* magic_caster = player ? player->GetMagicCaster(casting_src) : nullptr;
         auto* av_owner = player ? player->AsActorValueOwner() : nullptr;
         if (!magic_caster || !av_owner) {
-            Clear();
             return;
         }
 
-        if (!tes_util::CanCast(*magic_caster, *queued_spell_, /*ignore_magicka=*/true)) {
+        if (!tes_util::CheckCast(
+                *magic_caster,
+                *spell,
+                std::array{
+                    RE::MagicSystem::CannotCastReason::kMagicka,
+                    RE::MagicSystem::CannotCastReason::kCastWhileShouting
+                }
+            )) {
             tes_util::ActorPlayMagicFailureSound(*player);
-            Clear();
             return;
         }
         if (!RE::PlayerCharacter::IsGodMode()
-            && !tes_util::HasEnoughMagicka(*player, *av_owner, *queued_spell_, magicka_scale_)) {
+            && !tes_util::HasEnoughMagicka(*player, *av_owner, *spell, magicka_scale_)) {
             tes_util::ActorPlayMagicFailureSound(*player);
             tes_util::FlashMagickaBar();
-            Clear();
             return;
         }
 
-        tes_util::ApplyMagickaCost(*player, *av_owner, *queued_spell_, magicka_scale_);
+        tes_util::ApplyMagickaCost(*player, *av_owner, *spell, magicka_scale_);
         tes_util::ActorPlaySound(
-            *player, tes_util::GetSpellSound(queued_spell_, RE::MagicSystem::SoundID::kRelease)
+            *player, tes_util::GetSpellSound(spell, RE::MagicSystem::SoundID::kRelease)
         );
-        tes_util::CastSpellImmediate(player, magic_caster, queued_spell_);
-        Clear();
+        tes_util::CastSpellImmediate(player, magic_caster, spell);
     }
 
-    void
-    Clear() {
-        queued_shout_ = nullptr;
-        queued_spell_ = nullptr;
-    }
-
-    RE::TESShout* queued_shout_ = nullptr;
-    RE::SpellItem* queued_spell_ = nullptr;
     std::mutex& mutex_;
     Shoutmap& map_;
     const float magicka_scale_ = 1.f;
@@ -261,7 +224,7 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
             return;
         }
         Clear(magic_caster);
-        if (!tes_util::CanCast(*magic_caster, *spell)) {
+        if (!tes_util::CheckCast(*magic_caster, *spell)) {
             tes_util::ActorPlayMagicFailureSound(*player);
             return;
         }
