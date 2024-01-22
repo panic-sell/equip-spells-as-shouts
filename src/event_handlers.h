@@ -202,6 +202,7 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
         if (!player || !player->IsPlayerRef()) {
             return;
         }
+
         auto* shout = event->sourceForm ? event->sourceForm->As<RE::TESShout>() : nullptr;
         if (!shout) {
             return;
@@ -219,11 +220,12 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
             return;
         }
 
+        Clear(nullptr, nullptr);
+
         auto* magic_caster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kInstant);
         if (!magic_caster) {
             return;
         }
-        Clear(magic_caster);
         if (!tes_util::CheckCast(*magic_caster, *spell)) {
             tes_util::ActorPlayMagicFailureSound(*player);
             return;
@@ -251,7 +253,7 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
                                  ? player->GetMagicCaster(RE::MagicSystem::CastingSource::kInstant)
                                  : nullptr;
         if (!magic_caster || magic_caster->state != RE::MagicCaster::State::kCasting) {
-            Clear(magic_caster);
+            Clear(player, magic_caster);
             return;
         }
 
@@ -269,18 +271,23 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
         }
 
         if (!events) {
-            Clear(magic_caster);
+            Clear(player, magic_caster);
             return;
         }
         const auto* button = internal::GetShoutButtonInput(*events);
         if (!button || button->IsUp()) {
-            Clear(magic_caster);
+            Clear(player, magic_caster);
             return;
         }
     }
 
     void
-    Clear(RE::MagicCaster* caster) {
+    Clear(RE::Actor* player, RE::MagicCaster* caster) {
+        if (player) {
+            if (auto* high_data = tes_util::GetHighProcessData(*player)) {
+                high_data->voiceRecoveryTime = 0.f;
+            }
+        }
         if (caster) {
             caster->FinishCast();
         }
