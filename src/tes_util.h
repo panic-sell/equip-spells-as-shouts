@@ -158,6 +158,9 @@ ConsoleRun(std::format_string<Args...> fmt, Args&&... args) {
 /// In particular, scrolls are not considered spells.
 inline bool
 IsHandEquippedSpell(const RE::SpellItem& spell, bool allow_2h = true) {
+    if (spell.GetFormType() != RE::FormType::Spell) {
+        return false;
+    }
     const auto* equp = spell.As<RE::BGSEquipType>();
     const auto* slot = equp ? equp->GetEquipSlot() : nullptr;
     auto slot_id = slot ? slot->GetFormID() : 0;
