@@ -4,14 +4,18 @@
 #include "tes_util.h"
 
 namespace esas {
+namespace internal {
 
 inline constexpr std::string_view kModname = ESAS_NAME ".esp";
-
-namespace internal {
 
 inline RE::TESWordOfPower*
 Word() {
     return tes_util::GetForm<RE::TESWordOfPower>(kModname, 0x801);
+}
+
+inline RE::TESWordOfPower*
+UnlearnedWord() {
+    return tes_util::GetForm<RE::TESWordOfPower>(kModname, 0x802);
 }
 
 inline RE::TESShout*
@@ -19,22 +23,13 @@ DefaultShout() {
     return tes_util::GetForm<RE::TESShout>(kModname, 0x8ff);
 }
 
-template <RE::FormID First, RE::FormID Last>
-requires(First <= Last)
-inline constexpr std::array<RE::FormID, Last - First + 1>
-MakeLocalIDs() {
-    auto arr = std::array<RE::FormID, Last - First + 1>();
-    for (RE::FormID i = 0; i < arr.size(); i++) {
-        arr[i] = First + i;
-    }
-    return arr;
-}
-
 inline std::vector<RE::TESShout*>
-GetShouts(std::span<const RE::FormID> local_ids) {
+Shouts() {
+    constexpr RE::FormID first = 0x900;
+    constexpr RE::FormID count = 30;
     auto v = std::vector<RE::TESShout*>();
-    for (auto id : local_ids) {
-        auto* shout = tes_util::GetForm<RE::TESShout>(kModname, id);
+    for (RE::FormID i = 0; i < count; i++) {
+        auto* shout = tes_util::GetForm<RE::TESShout>(kModname, first + i);
         if (shout) {
             v.push_back(shout);
         }
@@ -44,16 +39,6 @@ GetShouts(std::span<const RE::FormID> local_ids) {
 
 }  // namespace internal
 
-inline std::vector<RE::TESShout*>
-FafShouts() {
-    return internal::GetShouts(internal::MakeLocalIDs<0x900, 0x90f>());
-}
-
-inline std::vector<RE::TESShout*>
-ConcShouts() {
-    return internal::GetShouts(internal::MakeLocalIDs<0x980, 0x98f>());
-}
-
 /// Shouts and their spell assignments.
 ///
 /// Invariants:
@@ -61,11 +46,17 @@ ConcShouts() {
 /// - Every element of `shouts_` is non-null.
 class Shoutmap final {
   public:
+    /// Returns an empty Shoutmap with no shouts and no spells.
     Shoutmap() = default;
 
-    explicit Shoutmap(std::vector<RE::TESShout*> shouts)
-        : shouts_(std::move(shouts)),
-          spells_(shouts_.size(), nullptr) {}
+    /// Returns a Shoutmap containing all spell shouts unassigned.
+    static Shoutmap
+    New() {
+        auto map = Shoutmap();
+        map.shouts_ = internal::Shouts();
+        map.spells_ = std::vector<RE::SpellItem*>(map.shouts_.size(), nullptr);
+        return map;
+    }
 
     size_t
     size() const {
@@ -166,12 +157,23 @@ class Shoutmap final {
             return AssignStatus::kUnknownShout;
         }
 
-        spells_[i] = &spell;
         shout.SetFullName(std::format("{} (Spell Shout)", spell.GetName()).c_str());
+
         auto shout_disp = shout.As<RE::BGSMenuDisplayObject>();
         auto spell_disp = spell.As<RE::BGSMenuDisplayObject>();
         if (shout_disp && spell_disp) {
             shout_disp->CopyComponent(spell_disp);
+        }
+
+        // Player should not know words 2 and 3 of concentration shouts. Concentration shouts are
+        // NOT triggered by the release of the shout button; rather, player waits until the shout
+        // startup finishes. Knowing words 2 or 3 results in a longer startup.
+        auto* word2and3 = spell.GetCastingType() == RE::MagicSystem::CastingType::kConcentration
+                              ? internal::UnlearnedWord()
+                              : internal::Word();
+        if (word2and3) {
+            shout.variations[RE::TESShout::VariationID::kTwo].word = word2and3;
+            shout.variations[RE::TESShout::VariationID::kThree].word = word2and3;
         }
 
         auto recovery = 0.f;
@@ -188,6 +190,7 @@ class Shoutmap final {
             var.recoveryTime = recovery;
         }
 
+        spells_[i] = &spell;
         return AssignStatus::kOk;
     }
 
@@ -278,7 +281,7 @@ ShoutmapFillFromIR(Shoutmap& map, const ShoutmapIR& ir, const RE::Actor& player)
     size_t assignments = 0;
 
     for (const auto& [shout_local_id, spell_id] : ir) {
-        auto* shout = tes_util::GetForm<RE::TESShout>(kModname, shout_local_id);
+        auto* shout = tes_util::GetForm<RE::TESShout>(internal::kModname, shout_local_id);
         if (!shout) {
             continue;
         }

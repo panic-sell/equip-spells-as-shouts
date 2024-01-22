@@ -12,7 +12,7 @@ set(headers
     "src/keys.h"
     "src/serde.h"
     "src/settings.h"
-    "src/shouts.h"
+    "src/shoutmap.h"
     "src/tes_util.h"
 )
 set(test_headers

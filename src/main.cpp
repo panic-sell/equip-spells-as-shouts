@@ -3,7 +3,7 @@
 #include "fs.h"
 #include "serde.h"
 #include "settings.h"
-#include "shouts.h"
+#include "shoutmap.h"
 
 namespace {
 
@@ -11,8 +11,7 @@ using namespace esas;
 
 auto gSettings = Settings();
 auto gMutex = std::mutex();
-auto gFafMap = Shoutmap();
-auto gConcMap = Shoutmap();
+auto gShoutmap = Shoutmap();
 
 void
 InitSettings() {
@@ -55,9 +54,9 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
         if (!msg || msg->type != SKSE::MessagingInterface::kDataLoaded) {
             return;
         }
-        if (!FafHandler::Init(gMutex, gFafMap, gSettings)
-            || !ConcHandler::Init(gMutex, gConcMap, gSettings)
-            || !AssignmentHandler::Init(gMutex, gFafMap, gConcMap, gSettings)) {
+        if (!FafHandler::Init(gMutex, gShoutmap, gSettings)
+            || !ConcHandler::Init(gMutex, gShoutmap, gSettings)
+            || !AssignmentHandler::Init(gMutex, gShoutmap, gSettings)) {
             SKSE::stl::report_and_fail("cannot initialize fire-and-forget handler");
         }
     };
@@ -69,10 +68,6 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
 
 void
 InitSKSESerialization(const SKSE::SerializationInterface& si) {
-    constexpr uint32_t kFafType = 'FAF';
-    constexpr uint32_t kConcType = 'CONC';
-    constexpr uint32_t kVersion = 1;
-
     static constexpr auto on_save = [](SKSE::SerializationInterface* si) -> void {
         if (!si) {
             return;
@@ -84,29 +79,15 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
         }
 
         auto lock = std::lock_guard(gMutex);
-        auto faf_ir = ShoutmapToIR(gFafMap, *player);
-        auto conc_ir = ShoutmapToIR(gConcMap, *player);
-
-        if (!faf_ir.empty()) {
-            auto s = Serialize(faf_ir);
-            if (si->WriteRecord(kFafType, kVersion, s.c_str(), static_cast<uint32_t>(s.size()))) {
-                SKSE::log::debug("fire-and-forget spell shout assignments serialized to SKSE cosave"
-                );
-            } else {
-                SKSE::log::error(
-                    "cannot serialize fire-and-forget spell shout assignments to SKSE cosave"
-                );
-            }
+        auto ir = ShoutmapToIR(gShoutmap, *player);
+        if (ir.empty()) {
+            return;
         }
-        if (!conc_ir.empty()) {
-            auto s = Serialize(conc_ir);
-            if (si->WriteRecord(kConcType, kVersion, s.c_str(), static_cast<uint32_t>(s.size()))) {
-                SKSE::log::debug("concentration spell shout assignments serialized to SKSE cosave");
-            } else {
-                SKSE::log::error(
-                    "cannot serialize concentration spell shout assignments to SKSE cosave"
-                );
-            }
+        auto s = Serialize(ir);
+        if (si->WriteRecord('ESAS', 1, s.c_str(), static_cast<uint32_t>(s.size()))) {
+            SKSE::log::debug("spell shout assignments serialized to SKSE cosave");
+        } else {
+            SKSE::log::error("cannot serialize spell shout assignments to SKSE cosave");
         }
     };
 
@@ -121,14 +102,12 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
         }
 
         auto lock = std::lock_guard(gMutex);
-        gFafMap = Shoutmap(FafShouts());
-        gConcMap = Shoutmap(ConcShouts());
+        gShoutmap = Shoutmap::New();
         uint32_t type;
         uint32_t version;  // unused
         uint32_t length;
         while (si->GetNextRecordInfo(type, version, length)) {
-            auto* map = type == kFafType ? &gFafMap : type == kConcType ? &gConcMap : nullptr;
-            if (!map) {
+            if (type != 'ESAS') {
                 SKSE::log::warn("unknown record type '{}' in SKSE cosave", type);
                 continue;
             }
@@ -159,11 +138,8 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
                 return pair.second == 0;
             });
 
-            if (ShoutmapFillFromIR(*map, *ir, *player) > 0) {
-                SKSE::log::debug(
-                    "{} spell power mapping loaded from SKSE cosave",
-                    type == 'FAF' ? "fire-and-forget" : "concentration"
-                );
+            if (ShoutmapFillFromIR(gShoutmap, *ir, *player) > 0) {
+                SKSE::log::debug("spell power assignments loaded from SKSE cosave");
             }
         }
     };
@@ -173,8 +149,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
             return;
         }
         auto lock = std::lock_guard(gMutex);
-        gFafMap = Shoutmap(FafShouts());
-        gConcMap = Shoutmap(ConcShouts());
+        gShoutmap = Shoutmap::New();
     };
 
     si.SetUniqueID('ESAS');

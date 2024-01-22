@@ -2,7 +2,7 @@
 
 #include "keys.h"
 #include "settings.h"
-#include "shouts.h"
+#include "shoutmap.h"
 #include "tes_util.h"
 
 namespace esas {
@@ -100,7 +100,6 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
             return;
         }
         if (spell->GetCastingType() != RE::MagicSystem::CastingType::kFireAndForget) {
-            SKSE::log::warn("cannot cast {} as a fire-and-forget spell", *spell);
             return;
         }
 
@@ -216,7 +215,6 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
             return;
         }
         if (spell->GetCastingType() != RE::MagicSystem::CastingType::kConcentration) {
-            SKSE::log::warn("cannot cast {} as a concentration spell", *spell);
             return;
         }
 
@@ -308,13 +306,13 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
 class AssignmentHandler final : public RE::BSTEventSink<RE::InputEvent*> {
   public:
     [[nodiscard]] static bool
-    Init(std::mutex& mutex, Shoutmap& faf_map, Shoutmap& conc_map, const Settings& settings) {
+    Init(std::mutex& mutex, Shoutmap& map, const Settings& settings) {
         auto* input_ev_src = RE::BSInputDeviceManager::GetSingleton();
         if (!input_ev_src) {
             return false;
         }
 
-        static auto instance = AssignmentHandler(mutex, faf_map, conc_map, settings);
+        static auto instance = AssignmentHandler(mutex, map, settings);
         input_ev_src->AddEventSink(&instance);
         return true;
     }
@@ -326,12 +324,9 @@ class AssignmentHandler final : public RE::BSTEventSink<RE::InputEvent*> {
     }
 
   private:
-    AssignmentHandler(
-        std::mutex& mutex, Shoutmap& faf_map, Shoutmap& conc_map, const Settings& settings
-    )
+    AssignmentHandler(std::mutex& mutex, Shoutmap& map, const Settings& settings)
         : mutex_(mutex),
-          faf_map_(faf_map),
-          conc_map_(conc_map),
+          map_(map),
           allow_2h_(settings.allow_2h_spells),
           assign_keysets_(settings.convert_spell_keysets),
           unassign_keysets_(settings.remove_shout_keysets) {}
@@ -375,17 +370,14 @@ class AssignmentHandler final : public RE::BSTEventSink<RE::InputEvent*> {
             return;
         }
         auto ct = spell->GetCastingType();
-        auto lock = std::lock_guard(mutex_);
-        auto* map = ct == RE::MagicSystem::CastingType::kFireAndForget   ? &faf_map_
-                    : ct == RE::MagicSystem::CastingType::kConcentration ? &conc_map_
-                                                                         : nullptr;
-        if (!map) {
+        if (ct != RE::MagicSystem::CastingType::kFireAndForget
+            && ct != RE::MagicSystem::CastingType::kConcentration) {
             return;
         }
 
         SKSE::log::trace("assigning {} ...", *spell);
         RE::TESShout* shout = nullptr;
-        switch (auto status = map->Assign(player, *spell, shout)) {
+        switch (auto status = map_.Assign(player, *spell, shout)) {
             case Shoutmap::AssignStatus::kOk:
                 tes_util::DebugNotification("{} added", shout->GetName());
                 break;
@@ -418,13 +410,12 @@ class AssignmentHandler final : public RE::BSTEventSink<RE::InputEvent*> {
             return;
         }
         auto lock = std::lock_guard(mutex_);
-        auto* map = faf_map_.Has(*shout) ? &faf_map_ : conc_map_.Has(*shout) ? &conc_map_ : nullptr;
-        if (!map) {
+        if (!map_.Has(*shout)) {
             return;
         }
 
         SKSE::log::trace("unassigning {} ...", *shout);
-        switch (auto status = map->Unassign(player, *shout)) {
+        switch (auto status = map_.Unassign(player, *shout)) {
             case Shoutmap::AssignStatus::kOk:
                 tes_util::DebugNotification("{} removed", shout->GetName());
                 break;
@@ -440,8 +431,7 @@ class AssignmentHandler final : public RE::BSTEventSink<RE::InputEvent*> {
 
     std::vector<Keystroke> buf_;
     std::mutex& mutex_;
-    Shoutmap& faf_map_;
-    Shoutmap& conc_map_;
+    Shoutmap& map_;
     const bool allow_2h_;
     const Keysets assign_keysets_;
     const Keysets unassign_keysets_;
