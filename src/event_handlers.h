@@ -130,7 +130,8 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
                 *spell,
                 std::array{
                     RE::MagicSystem::CannotCastReason::kMagicka,
-                    RE::MagicSystem::CannotCastReason::kCastWhileShouting
+                    RE::MagicSystem::CannotCastReason::kMultipleCast,
+                    RE::MagicSystem::CannotCastReason::kCastWhileShouting,
                 }
             )) {
             SKSE::log::trace("faf: {} -> {} CheckCast failed", *shout, *spell);

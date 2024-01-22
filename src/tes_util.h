@@ -213,6 +213,7 @@ CheckCast(
             return true;
         }
     }
+    SKSE::log::trace("cannot cast reason: {}", std::to_underlying(reason));
     return false;
 }
 
