@@ -55,16 +55,9 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
         if (!msg || msg->type != SKSE::MessagingInterface::kDataLoaded) {
             return;
         }
-        if (!FafHandler::Init(gMutex, gFafMap, gSettings.magicka_scale_faf)
-            || !ConcHandler::Init(gMutex, gConcMap, gSettings.magicka_scale_conc)
-            || !AssignmentHandler::Init(
-                gMutex,
-                gFafMap,
-                gConcMap,
-                gSettings.allow_2h_spells,
-                gSettings.convert_spell_keysets,
-                gSettings.remove_shout_keysets
-            )) {
+        if (!FafHandler::Init(gMutex, gFafMap, gSettings)
+            || !ConcHandler::Init(gMutex, gConcMap, gSettings)
+            || !AssignmentHandler::Init(gMutex, gFafMap, gConcMap, gSettings)) {
             SKSE::stl::report_and_fail("cannot initialize fire-and-forget handler");
         }
     };

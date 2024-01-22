@@ -1,6 +1,7 @@
 #pragma once
 
 #include "keys.h"
+#include "settings.h"
 #include "shouts.h"
 #include "tes_util.h"
 
@@ -45,14 +46,14 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
                          public RE::BSTEventSink<RE::TESSpellCastEvent> {
   public:
     [[nodiscard]] static bool
-    Init(std::mutex& mutex, Shoutmap& map, float magicka_scale) {
+    Init(std::mutex& mutex, Shoutmap& map, const Settings& settings) {
         auto* action_ev_src = SKSE::GetActionEventSource();
         auto* spellcast_ev_src = RE::ScriptEventSourceHolder::GetSingleton();
         if (!action_ev_src || !spellcast_ev_src) {
             return false;
         }
 
-        static auto instance = FafHandler(mutex, map, magicka_scale);
+        static auto instance = FafHandler(mutex, map, settings);
         action_ev_src->AddEventSink(&instance);
         spellcast_ev_src->AddEventSink<RE::TESSpellCastEvent>(&instance);
         return true;
@@ -72,10 +73,10 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
     }
 
   private:
-    FafHandler(std::mutex& mutex, Shoutmap& map, float magicka_scale)
+    FafHandler(std::mutex& mutex, Shoutmap& map, const Settings& settings)
         : mutex_(mutex),
           map_(map),
-          magicka_scale_(magicka_scale) {}
+          magicka_scale_(settings.magicka_scale_faf) {}
 
     FafHandler(const FafHandler&) = delete;
     FafHandler& operator=(const FafHandler&) = delete;
@@ -189,14 +190,14 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
                           public RE::BSTEventSink<RE::InputEvent*> {
   public:
     [[nodiscard]] static bool
-    Init(std::mutex& mutex, Shoutmap& map, float magicka_scale) {
+    Init(std::mutex& mutex, Shoutmap& map, const Settings& settings) {
         auto* action_ev_src = SKSE::GetActionEventSource();
         auto* input_ev_src = RE::BSInputDeviceManager::GetSingleton();
         if (!action_ev_src || !input_ev_src) {
             return false;
         }
 
-        static auto instance = ConcHandler(mutex, map, magicka_scale);
+        static auto instance = ConcHandler(mutex, map, settings);
         action_ev_src->AddEventSink(&instance);
         input_ev_src->AddEventSink(&instance);
         return true;
@@ -215,10 +216,10 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
     }
 
   private:
-    ConcHandler(std::mutex& mutex, Shoutmap& map, float magicka_scale)
+    ConcHandler(std::mutex& mutex, Shoutmap& map, const Settings& settings)
         : mutex_(mutex),
           map_(map),
-          magicka_scale_(magicka_scale) {}
+          magicka_scale_(settings.magicka_scale_conc) {}
 
     ConcHandler(const ConcHandler&) = delete;
     ConcHandler& operator=(const ConcHandler&) = delete;
@@ -337,27 +338,13 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
 class AssignmentHandler final : public RE::BSTEventSink<RE::InputEvent*> {
   public:
     [[nodiscard]] static bool
-    Init(
-        std::mutex& mutex,
-        Shoutmap& faf_map,
-        Shoutmap& conc_map,
-        bool allow_2h,
-        Keysets assign_keysets,
-        Keysets unassign_keysets
-    ) {
+    Init(std::mutex& mutex, Shoutmap& faf_map, Shoutmap& conc_map, const Settings& settings) {
         auto* input_ev_src = RE::BSInputDeviceManager::GetSingleton();
         if (!input_ev_src) {
             return false;
         }
 
-        static auto instance = AssignmentHandler(
-            mutex,
-            faf_map,
-            conc_map,
-            allow_2h,
-            std::move(assign_keysets),
-            std::move(unassign_keysets)
-        );
+        static auto instance = AssignmentHandler(mutex, faf_map, conc_map, settings);
         input_ev_src->AddEventSink(&instance);
         return true;
     }
@@ -370,19 +357,14 @@ class AssignmentHandler final : public RE::BSTEventSink<RE::InputEvent*> {
 
   private:
     AssignmentHandler(
-        std::mutex& mutex,
-        Shoutmap& faf_map,
-        Shoutmap& conc_map,
-        bool allow_2h,
-        Keysets assign_keysets,
-        Keysets unassign_keysets
+        std::mutex& mutex, Shoutmap& faf_map, Shoutmap& conc_map, const Settings& settings
     )
         : mutex_(mutex),
           faf_map_(faf_map),
           conc_map_(conc_map),
-          allow_2h_(allow_2h),
-          assign_keysets_(std::move(assign_keysets)),
-          unassign_keysets_(std::move(unassign_keysets)) {}
+          allow_2h_(settings.allow_2h_spells),
+          assign_keysets_(settings.convert_spell_keysets),
+          unassign_keysets_(settings.remove_shout_keysets) {}
 
     AssignmentHandler(const AssignmentHandler&) = delete;
     AssignmentHandler& operator=(const AssignmentHandler&) = delete;
