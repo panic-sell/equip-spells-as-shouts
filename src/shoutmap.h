@@ -177,12 +177,7 @@ class Shoutmap final {
         }
 
         auto recovery = 0.f;
-        if (const auto* av_eff = spell.GetAVEffect();
-            av_eff && av_eff->GetArchetype() == RE::EffectArchetypes::ArchetypeID::kBoundWeapon) {
-            // When casting a level 3 shout, prevent accidentally holding the shout button for too
-            // long and casting a subsequent level 1 shout.
-            recovery = 2.f;
-        } else if (spell.GetCastingType() == RE::MagicSystem::CastingType::kConcentration) {
+        if (spell.GetCastingType() == RE::MagicSystem::CastingType::kConcentration) {
             // Prevent the shout animation from looping.
             recovery = 5.f;
         }

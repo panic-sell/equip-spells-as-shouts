@@ -141,7 +141,6 @@ template <class... Args>
 [[nodiscard]] inline bool
 ConsoleRun(std::format_string<Args...> fmt, Args&&... args) {
     auto cmd = std::vformat(fmt.get(), std::make_format_args(args...));
-    SKSE::log::trace("running console command: {}", cmd);
 
     auto* fac = RE::IFormFactory::GetConcreteFormFactoryByType<RE::Script>();
     auto* script = fac ? fac->Create() : nullptr;
@@ -286,22 +285,10 @@ ActorPlayMagicFailureSound(RE::Actor& actor) {
 
 inline void
 FlashMagickaBar() {
-    auto* q = RE::UIMessageQueue::GetSingleton();
-    if (!q) {
-        return;
-    }
-
-    auto* facman = RE::MessageDataFactoryManager::GetSingleton();
-    auto* istrs = RE::InterfaceStrings::GetSingleton();
-    auto* fac = facman && istrs ? facman->GetCreator<RE::HUDData>(istrs->hudData) : nullptr;
-    auto* huddata = fac ? fac->Create() : nullptr;
-    if (!huddata) {
-        return;
-    }
-
-    huddata->type = RE::HUDData::Type::kSetBlinking;
-    huddata->discovery = static_cast<RE::HUDData::Discovery>(RE::ActorValue::kMagicka);
-    q->AddMessage(RE::HUDMenu::MENU_NAME, RE::UI_MESSAGE_TYPE::kUpdate, huddata);
+    // We can't simply add flash-HUD events to the UI message queue because TrueHUD won't react to
+    // those.
+    auto FlashHudMenuMeter = REL::Relocation<void(RE::ActorValue)>(REL::RelocationID(51907, 52845));
+    FlashHudMenuMeter(RE::ActorValue::kMagicka);
 }
 
 }  // namespace tes_util

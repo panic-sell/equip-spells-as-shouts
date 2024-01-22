@@ -1,5 +1,7 @@
 This is a simple SKSE mod allowing you to turn any hand-equipped spell into a shout, including custom spells from other mods.
 
+The goal of this mod is to provide a way to cast spells while leaving your hands free.
+
 
 ## **Features**
 

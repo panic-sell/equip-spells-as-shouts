@@ -97,6 +97,7 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
             spell = map_[*shout];
         }
         if (!spell) {
+            SKSE::log::trace("faf: {} is not a spell shout or is unassigned", *shout);
             return;
         }
         if (spell->GetCastingType() != RE::MagicSystem::CastingType::kFireAndForget) {
@@ -115,6 +116,7 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
         auto* magic_caster = player ? player->GetMagicCaster(casting_src) : nullptr;
         auto* av_owner = player ? player->AsActorValueOwner() : nullptr;
         if (!magic_caster || !av_owner) {
+            SKSE::log::trace("can't get player RE::MagicCaster");
             return;
         }
 
@@ -126,11 +128,13 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
                     RE::MagicSystem::CannotCastReason::kCastWhileShouting
                 }
             )) {
+            SKSE::log::trace("faf: {} -> {} CheckCast failed", *shout, *spell);
             tes_util::ActorPlayMagicFailureSound(*player);
             return;
         }
         if (!RE::PlayerCharacter::IsGodMode()
             && !tes_util::HasEnoughMagicka(*player, *av_owner, *spell, magicka_scale_)) {
+            SKSE::log::trace("faf: {} -> {} not enough magicka", *shout, *spell);
             tes_util::ActorPlayMagicFailureSound(*player);
             tes_util::FlashMagickaBar();
             return;
@@ -141,6 +145,7 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
             *player, tes_util::GetSpellSound(spell, RE::MagicSystem::SoundID::kRelease)
         );
         tes_util::CastSpellImmediate(player, magic_caster, spell);
+        SKSE::log::debug("faf: casting {} -> {}", *shout, *spell);
     }
 
     std::mutex& mutex_;
@@ -212,6 +217,7 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
             spell = map_[*shout];
         }
         if (!spell) {
+            SKSE::log::trace("conc: {} is not a spell shout or is unassigned", *shout);
             return;
         }
         if (spell->GetCastingType() != RE::MagicSystem::CastingType::kConcentration) {
@@ -222,9 +228,11 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
 
         auto* magic_caster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kInstant);
         if (!magic_caster) {
+            SKSE::log::trace("can't get player RE::MagicCaster");
             return;
         }
         if (!tes_util::CheckCast(*magic_caster, *spell)) {
+            SKSE::log::trace("conc: {} -> {} CheckCast failed", *shout, *spell);
             tes_util::ActorPlayMagicFailureSound(*player);
             return;
         }
@@ -238,6 +246,7 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
         magic_caster->currentSpellCost = spell->CalculateMagickaCost(player) * magicka_scale_;
         tes_util::CastSpellImmediate(player, magic_caster, spell);
         current_spell_ = spell;
+        SKSE::log::debug("conc: casting {} -> {}", *shout, *spell);
     }
 
     void
@@ -375,7 +384,7 @@ class AssignmentHandler final : public RE::BSTEventSink<RE::InputEvent*> {
             return;
         }
 
-        SKSE::log::trace("assigning {} ...", *spell);
+        SKSE::log::debug("assigning {} ...", *spell);
         RE::TESShout* shout = nullptr;
         switch (auto status = map_.Assign(player, *spell, shout)) {
             case Shoutmap::AssignStatus::kOk:
@@ -414,7 +423,7 @@ class AssignmentHandler final : public RE::BSTEventSink<RE::InputEvent*> {
             return;
         }
 
-        SKSE::log::trace("unassigning {} ...", *shout);
+        SKSE::log::debug("unassigning {} ...", *shout);
         switch (auto status = map_.Unassign(player, *shout)) {
             case Shoutmap::AssignStatus::kOk:
                 tes_util::DebugNotification("{} removed", shout->GetName());
