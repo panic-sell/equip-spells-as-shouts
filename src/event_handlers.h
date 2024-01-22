@@ -104,10 +104,15 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
             return;
         }
 
-        auto casting_src = RE::MagicSystem::CastingSource::kInstant;
+        auto is_bound_spell = false;
+        if (const auto* av_eff = spell->GetAVEffect()) {
+            is_bound_spell = av_eff->GetArchetype()
+                             == RE::EffectArchetypes::ArchetypeID::kBoundWeapon;
+        }
+
         // Bound weapon must be cast from hands.
-        if (const auto* av_eff = spell->GetAVEffect();
-            av_eff && av_eff->GetArchetype() == RE::EffectArchetypes::ArchetypeID::kBoundWeapon) {
+        auto casting_src = RE::MagicSystem::CastingSource::kInstant;
+        if (is_bound_spell) {
             casting_src = high_data->currentShoutVariation == RE::TESShout::VariationID::kOne
                               ? RE::MagicSystem::CastingSource::kRightHand
                               : RE::MagicSystem::CastingSource::kLeftHand;
@@ -140,6 +145,13 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
             return;
         }
 
+        if (is_bound_spell) {
+            if (auto* aem = RE::ActorEquipManager::GetSingleton()) {
+                tes_util::UnequipHand(
+                    *aem, *player, casting_src == RE::MagicSystem::CastingSource::kLeftHand
+                );
+            }
+        }
         tes_util::ApplyMagickaCost(*player, *av_owner, *spell, magicka_scale_);
         tes_util::ActorPlaySound(
             *player, tes_util::GetSpellSound(spell, RE::MagicSystem::SoundID::kRelease)

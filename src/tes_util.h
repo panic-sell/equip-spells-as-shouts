@@ -47,7 +47,7 @@ inline constexpr RE::FormID kEqupRightHand = 0x13f42;
 inline constexpr RE::FormID kEqupLeftHand = 0x13f43;
 inline constexpr RE::FormID kEqupEitherHand = 0x13f44;
 inline constexpr RE::FormID kEqupBothHands = 0x13f45;
-inline constexpr RE::FormID kEqupVoice = 0x25bee;
+inline constexpr RE::FormID kWeapDummy = 0x20163;
 
 /// Like `RE::TESForm::LookupByID()` but logs on failure.
 inline RE::TESForm*
@@ -289,6 +289,22 @@ FlashMagickaBar() {
     // those.
     auto FlashHudMenuMeter = REL::Relocation<void(RE::ActorValue)>(REL::RelocationID(51907, 52845));
     FlashHudMenuMeter(RE::ActorValue::kMagicka);
+}
+
+inline void
+UnequipHand(RE::ActorEquipManager& aem, RE::Actor& actor, bool left_hand) {
+    auto equp_id = left_hand ? tes_util::kEqupLeftHand : tes_util::kEqupRightHand;
+    const auto* bgs_slot = tes_util::GetForm<RE::BGSEquipSlot>(equp_id);
+    auto* dummy = tes_util::GetForm<RE::TESObjectWEAP>(tes_util::kWeapDummy);
+    if (!bgs_slot || !dummy) {
+        SKSE::log::error(
+            "unequip hand failed: cannot look up {:08X} or {:08X}", equp_id, tes_util::kWeapDummy
+        );
+        return;
+    }
+    //                                                 queue, force, sounds, apply_now
+    aem.EquipObject(&actor, dummy, nullptr, 1, bgs_slot, false, false, false, true);
+    aem.UnequipObject(&actor, dummy, nullptr, 1, bgs_slot, false, false, false, true);
 }
 
 }  // namespace tes_util
