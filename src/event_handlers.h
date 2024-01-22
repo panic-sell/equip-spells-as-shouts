@@ -83,7 +83,8 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
             return;
         }
         auto* high_data = tes_util::GetHighProcessData(*player);
-        if (!high_data) {
+        auto* av_owner = player->AsActorValueOwner();
+        if (!high_data || !av_owner) {
             return;
         }
 
@@ -103,46 +104,29 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
         if (spell->GetCastingType() != RE::MagicSystem::CastingType::kFireAndForget) {
             return;
         }
+        if (!RE::PlayerCharacter::IsGodMode()
+            && !tes_util::HasEnoughMagicka(*player, *av_owner, *spell, magicka_scale_)) {
+            SKSE::log::trace("faf: {} -> {} not enough magicka", *shout, *spell);
+            tes_util::ActorPlayMagicFailureSound(*player);
+            tes_util::FlashMagickaBar();
+            return;
+        }
 
+        // Bound weapon must be cast from hands.
         auto is_bound_spell = false;
         if (const auto* av_eff = spell->GetAVEffect()) {
             is_bound_spell = av_eff->GetArchetype()
                              == RE::EffectArchetypes::ArchetypeID::kBoundWeapon;
         }
-
-        // Bound weapon must be cast from hands.
         auto casting_src = RE::MagicSystem::CastingSource::kInstant;
         if (is_bound_spell) {
             casting_src = high_data->currentShoutVariation == RE::TESShout::VariationID::kOne
                               ? RE::MagicSystem::CastingSource::kRightHand
                               : RE::MagicSystem::CastingSource::kLeftHand;
         }
-
         auto* magic_caster = player ? player->GetMagicCaster(casting_src) : nullptr;
-        auto* av_owner = player ? player->AsActorValueOwner() : nullptr;
-        if (!magic_caster || !av_owner) {
+        if (!magic_caster) {
             SKSE::log::trace("can't get player RE::MagicCaster");
-            return;
-        }
-
-        if (!tes_util::CheckCast(
-                *magic_caster,
-                *spell,
-                std::array{
-                    RE::MagicSystem::CannotCastReason::kMagicka,
-                    RE::MagicSystem::CannotCastReason::kMultipleCast,
-                    RE::MagicSystem::CannotCastReason::kCastWhileShouting,
-                }
-            )) {
-            SKSE::log::trace("faf: {} -> {} CheckCast failed", *shout, *spell);
-            tes_util::ActorPlayMagicFailureSound(*player);
-            return;
-        }
-        if (!RE::PlayerCharacter::IsGodMode()
-            && !tes_util::HasEnoughMagicka(*player, *av_owner, *spell, magicka_scale_)) {
-            SKSE::log::trace("faf: {} -> {} not enough magicka", *shout, *spell);
-            tes_util::ActorPlayMagicFailureSound(*player);
-            tes_util::FlashMagickaBar();
             return;
         }
 
@@ -242,11 +226,6 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
         auto* magic_caster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kInstant);
         if (!magic_caster) {
             SKSE::log::trace("can't get player RE::MagicCaster");
-            return;
-        }
-        if (!tes_util::CheckCast(*magic_caster, *spell)) {
-            SKSE::log::trace("conc: {} -> {} CheckCast failed", *shout, *spell);
-            tes_util::ActorPlayMagicFailureSound(*player);
             return;
         }
 

@@ -193,31 +193,6 @@ GetHighProcessData(RE::Actor& player) {
 }
 
 inline bool
-CheckCast(
-    RE::MagicCaster& caster,
-    RE::SpellItem& spell,
-    std::span<const RE::MagicSystem::CannotCastReason> ignored_reasons = {}
-) {
-    auto reason = RE::MagicSystem::CannotCastReason::kOK;
-    if (caster.CheckCast(
-            &spell,
-            /*a_dualCast=*/false,
-            /*a_alchStrength=*/nullptr,
-            &reason,
-            /*a_useBaseValueForCost=*/false
-        )) {
-        return true;
-    }
-    for (auto ignore : ignored_reasons) {
-        if (reason == ignore) {
-            return true;
-        }
-    }
-    SKSE::log::trace("cannot cast reason: {}", std::to_underlying(reason));
-    return false;
-}
-
-inline bool
 HasEnoughMagicka(
     RE::Actor& actor, RE::ActorValueOwner& av_owner, const RE::SpellItem& spell, float magicka_scale
 ) {
