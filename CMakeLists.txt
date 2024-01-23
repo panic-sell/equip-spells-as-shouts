@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28.1)
-project(EquipSpellsAsShouts VERSION 1.0.0 LANGUAGES CXX)
+project(EquipSpellsAsShouts VERSION 1.0.1 LANGUAGES CXX)
 
 
 ###########################################################
