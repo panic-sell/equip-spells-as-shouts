@@ -2,6 +2,8 @@ This is a simple SKSE mod allowing you to turn any hand-equipped spell into a sh
 
 The goal of this mod is to provide a way to cast spells while leaving your hands free.
 
+This mod is extremely similar to [Cast Spells As Lesser Powers](https://www.nexusmods.com/skyrimspecialedition/mods/65398) in terms of features. The main notable difference is that that mod was implemented in Papyrus, whereas this mod ships as a SKSE DLL. If you're already using Cast Spells As Lesser Powers and are happy with it, there's probably no need to switch.
+
 
 ## **Features**
 
