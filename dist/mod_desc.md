@@ -24,6 +24,9 @@ Additional usage details:
 - Bound weapon spells: Cast the level 1 shout to equip to your right hand, and cast either the level 2 or 3 shout to equip to your left.
 - By default, ritual spells cannot be converted to shouts (the lack of startup delay makes them kind of OP), but you can enable this feature in **`EquipSpellsAsShouts.json`**.
 
+Video demo (make sure to enable captions):
+[youtube]iXzpKBBuavs[/youtube]
+
 
 ## **Other Notes**
 
