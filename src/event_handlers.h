@@ -113,18 +113,18 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
         }
 
         // Bound weapon must be cast from hands.
-        auto is_bound_spell = false;
-        if (const auto* av_eff = spell->GetAVEffect()) {
-            is_bound_spell = av_eff->GetArchetype()
-                             == RE::EffectArchetypes::ArchetypeID::kBoundWeapon;
-        }
+        auto is_bound_spell = spell->GetAVEffect()
+                              && spell->GetAVEffect()->GetArchetype()
+                                     == RE::EffectArchetypes::ArchetypeID::kBoundWeapon;
         auto casting_src = RE::MagicSystem::CastingSource::kInstant;
         if (is_bound_spell) {
-            casting_src = high_data->currentShoutVariation == RE::TESShout::VariationID::kOne
-                              ? RE::MagicSystem::CastingSource::kRightHand
-                              : RE::MagicSystem::CastingSource::kLeftHand;
+            if (high_data->currentShoutVariation == RE::TESShout::VariationID::kOne) {
+                casting_src = RE::MagicSystem::CastingSource::kRightHand;
+            } else {
+                casting_src = RE::MagicSystem::CastingSource::kLeftHand;
+            }
         }
-        auto* magic_caster = player ? player->GetMagicCaster(casting_src) : nullptr;
+        auto* magic_caster = player->GetMagicCaster(casting_src);
         if (!magic_caster) {
             SKSE::log::trace("can't get player RE::MagicCaster");
             return;
@@ -141,13 +141,13 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
         tes_util::ActorPlaySound(
             *player, tes_util::GetSpellSound(spell, RE::MagicSystem::SoundID::kRelease)
         );
-        tes_util::CastSpellImmediate(player, magic_caster, spell);
+        tes_util::CastSpellImmediate(*player, *magic_caster, *spell);
         SKSE::log::debug("faf: casting {} -> {}", *shout, *spell);
     }
 
     std::mutex& mutex_;
     Shoutmap& map_;
-    const float magicka_scale_ = 1.f;
+    const float magicka_scale_;
 };
 
 class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
@@ -236,7 +236,7 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
             *player, tes_util::GetSpellSound(spell, RE::MagicSystem::SoundID::kRelease)
         );
         magic_caster->currentSpellCost = spell->CalculateMagickaCost(player) * magicka_scale_;
-        tes_util::CastSpellImmediate(player, magic_caster, spell);
+        tes_util::CastSpellImmediate(*player, *magic_caster, *spell);
         current_spell_ = spell;
         SKSE::log::debug("conc: casting {} -> {}", *shout, *spell);
     }
@@ -301,7 +301,7 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
     std::optional<RE::BSSoundHandle> loop_soundhandle_;
     std::mutex& mutex_;
     Shoutmap& map_;
-    const float magicka_scale_ = 1.f;
+    const float magicka_scale_;
 };
 
 class AssignmentHandler final : public RE::BSTEventSink<RE::InputEvent*> {
@@ -386,11 +386,7 @@ class AssignmentHandler final : public RE::BSTEventSink<RE::InputEvent*> {
                 tes_util::DebugNotification("{} already assigned", spell->GetName());
                 break;
             case Shoutmap::AssignStatus::kOutOfSlots:
-                tes_util::DebugNotification(
-                    "No remaining {} shout slots",
-                    ct == RE::MagicSystem::CastingType::kFireAndForget ? "Fire and Forget"
-                                                                       : "Concentration"
-                );
+                tes_util::DebugNotification("No remaining shout slots");
                 break;
             case Shoutmap::AssignStatus::kUnknownShout:
             case Shoutmap::AssignStatus::kInternalError:

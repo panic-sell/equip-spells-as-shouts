@@ -129,7 +129,7 @@ GetNamedFormID(const RE::TESForm& form) {
 }
 
 template <class... Args>
-inline void
+void
 DebugNotification(std::format_string<Args...> fmt, Args&&... args) {
     auto s = std::vformat(fmt.get(), std::make_format_args(args...));
     RE::DebugNotification(s.c_str());
@@ -138,7 +138,7 @@ DebugNotification(std::format_string<Args...> fmt, Args&&... args) {
 /// Returns false if unable to allocate a console command execution context. Returning true means
 /// the command was executed, even if that execution failed inside the console.
 template <class... Args>
-[[nodiscard]] inline bool
+[[nodiscard]] bool
 ConsoleRun(std::format_string<Args...> fmt, Args&&... args) {
     auto cmd = std::vformat(fmt.get(), std::make_format_args(args...));
 
@@ -200,7 +200,7 @@ HasEnoughMagicka(
     return spell.CalculateMagickaCost(&actor) * magicka_scale <= magicka;
 }
 
-void
+inline void
 ApplyMagickaCost(
     RE::Actor& actor, RE::ActorValueOwner& av_owner, const RE::SpellItem& spell, float magicka_scale
 ) {
@@ -211,19 +211,16 @@ ApplyMagickaCost(
     );
 }
 
-void
-CastSpellImmediate(RE::Actor* actor, RE::MagicCaster* magic_caster, RE::SpellItem* spell) {
-    if (!actor || !magic_caster || !spell) {
-        return;
-    }
-    magic_caster->CastSpellImmediate(
-        spell,
+inline void
+CastSpellImmediate(RE::Actor& actor, RE::MagicCaster& magic_caster, RE::SpellItem& spell) {
+    magic_caster.CastSpellImmediate(
+        &spell,
         /*a_noHitEffectArt=*/false,
         /*a_target=*/nullptr,
         /*a_effectiveness=*/1.f,
         /*a_hostileEffectivenessOnly=*/false,
         /*a_magnitudeOverride=*/0.f,
-        /*a_blameActor=*/actor
+        /*a_blameActor=*/&actor
     );
 }
 

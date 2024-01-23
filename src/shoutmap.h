@@ -8,21 +8,37 @@ namespace internal {
 
 inline constexpr std::string_view kModname = ESAS_NAME ".esp";
 
+/// The word of power that players must know in order to cast this mod's shouts.
 inline RE::TESWordOfPower*
 Word() {
     return tes_util::GetForm<RE::TESWordOfPower>(kModname, 0x801);
 }
 
+/// Word of power that players should never know. Used to prevent casting the level 2/3 variations
+/// of concentration shouts.
+///
+/// Concentration shouts are NOT triggered by the release of the shout button; rather, player keeps
+/// the shout button held, and waits until the shout startup animation finishes. Knowing words 2 or
+/// 3 results in a longer startup.
 inline RE::TESWordOfPower*
 UnlearnedWord() {
     return tes_util::GetForm<RE::TESWordOfPower>(kModname, 0x802);
 }
 
+/// Placeholder shout that does not participate in spell assignments.
+///
+/// On learning a word of power, the corresponding shout gets auto-added to the player's inventory.
+/// If multiple shouts share the same word, the shout with the lowest form ID is the one that gets
+/// added. This default shout functions as that "shout with lowest ID", and we unconditionally
+/// remove it from the player's inventory after teachword finishes. If this shout did not exist,
+/// teachword would add a real shout, and we would have to check whether we should remove that shout
+/// (was the shout meant to be assigned, or was it added purely due to teachword?)
 inline RE::TESShout*
 DefaultShout() {
     return tes_util::GetForm<RE::TESShout>(kModname, 0x8ff);
 }
 
+/// The real shouts, i.e. the ones that get spell assignments.
 inline std::vector<RE::TESShout*>
 Shouts() {
     constexpr RE::FormID first = 0x900;
@@ -124,22 +140,12 @@ class Shoutmap final {
             return AssignStatus::kInternalError;
         }
 
-        if (
-            // There's no harm adding the word of power during every assignment. It'll just be a
-            // no-op most of the time.
-            !tes_util::ConsoleRun("player.teachword {:08x}", word->GetFormID())
-            // Teaching a word auto-adds the corresponding shout. If multiple shouts share the same
-            // word, the shout with the lowest form ID is chosen. Since all spell shouts share the
-            // same word, the lowest one will get auto-added. To prevent auto-adding real spell
-            // shouts, the ESP defines a default shout with a lower form ID than all real shouts.
-            // Hence, it is necessary to clean up the default shout as well after it gets
-            // auto-added.
-            || !tes_util::ConsoleRun("player.removeshout {:08x}", default_shout->GetFormID())
-        ) {
+        // No way to check if a player knows a particular word, so we have to blindly assume these
+        // console commands work.
+        if (!tes_util::ConsoleRun("player.teachword {:08x}", word->GetFormID())
+            || !tes_util::ConsoleRun("player.removeshout {:08x}", default_shout->GetFormID())) {
             return AssignStatus::kInternalError;
         }
-        // No way to check if a player knows a particular word, so we have to blindly assume the
-        // above console commands worked.
 
         player.UnlockWord(word);
         player.AddShout(shout);
@@ -165,9 +171,6 @@ class Shoutmap final {
             shout_disp->CopyComponent(spell_disp);
         }
 
-        // Player should not know words 2 and 3 of concentration shouts. Concentration shouts are
-        // NOT triggered by the release of the shout button; rather, player waits until the shout
-        // startup finishes. Knowing words 2 or 3 results in a longer startup.
         auto* word2and3 = spell.GetCastingType() == RE::MagicSystem::CastingType::kConcentration
                               ? internal::UnlearnedWord()
                               : internal::Word();
@@ -270,7 +273,7 @@ ShoutmapToIR(const Shoutmap& map, const RE::Actor& player) {
 }
 
 /// Writes all valid assignment from `ir` into `map`, filtering only for assignments where the shout
-/// is in `player`'s inventory.
+/// is in `player`'s inventory. Returns the number of shout-spell pairs written to `map`.
 inline size_t
 ShoutmapFillFromIR(Shoutmap& map, const ShoutmapIR& ir, const RE::Actor& player) {
     size_t assignments = 0;
