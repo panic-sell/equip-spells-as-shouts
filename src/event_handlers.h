@@ -203,6 +203,10 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
         if (!player || !player->IsPlayerRef()) {
             return;
         }
+        auto* av_owner = player->AsActorValueOwner();
+        if (!av_owner) {
+            return;
+        }
 
         auto* shout = event->sourceForm ? event->sourceForm->As<RE::TESShout>() : nullptr;
         if (!shout) {
@@ -220,8 +224,16 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
         if (spell->GetCastingType() != RE::MagicSystem::CastingType::kConcentration) {
             return;
         }
-
         Clear(nullptr, nullptr);
+        if (av_owner->GetActorValue(RE::ActorValue::kMagicka) <= 0.f) {
+            SKSE::log::trace("conc: {} -> {} not enough magicka", *shout, *spell);
+            tes_util::ActorPlayMagicFailureSound(*player);
+            tes_util::FlashMagickaBar();
+            // Required for Poll() to reset shout cooldown. Resetting cooldown in this function (in
+            // the same frame?) doesn't work.
+            current_spell_ = spell;
+            return;
+        }
 
         auto* magic_caster = player->GetMagicCaster(RE::MagicSystem::CastingSource::kInstant);
         if (!magic_caster) {
@@ -280,6 +292,11 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
         }
     }
 
+    /// Sets `current_spell_` to null. Stops and resets `loop_soundhandle_` (no-op if sound handle
+    /// is already cleared).
+    ///
+    /// If `player` is non-null, resets player's shout cooldown. If `caster` is non-null, forces
+    /// caster to finish the current cast (no-op if caster isn't casting).
     void
     Clear(RE::Actor* player, RE::MagicCaster* caster) {
         if (player) {
