@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.x.x
+- In EquipSpellsAsShouts.json, add missing link to key names.
+
 ## 1.0.2
 - Fix a bug that allowed casting concentration spell shouts at 0 magicka.
 - Document Path of Sorcery incompatibility.

@@ -10,7 +10,7 @@
 
     // Default: Shift + Equals Sign
     // Key names can be found at the following link (names are case-sensitive):
-    // TODO
+    // https://github.com/panic-sell/equip-spells-as-shouts/blob/226890357e5a21e2a0137826388f09d3a84fba34/src/keys.h#L6
     "convert_spell_keysets": [
         ["LShift", "="],
         ["RShift", "="],
