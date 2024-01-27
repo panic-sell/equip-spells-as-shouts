@@ -1,7 +1,8 @@
 # Changelog
 
-## 1.x.x
+## 1.0.2
 - Fix a bug that allowed casting concentration spell shouts at 0 magicka.
+- Document Path of Sorcery incompatibility.
 
 ## 1.0.1
 - Reword in-game notification message for "out of slots".
