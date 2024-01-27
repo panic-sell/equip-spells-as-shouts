@@ -2,6 +2,7 @@
 
 ## 1.x.x
 - In EquipSpellsAsShouts.json, add missing link to key names.
+- Allow casting concentration spell shouts at 0 magicka if the spell actually costs no magicka.
 
 ## 1.0.2
 - Fix a bug that allowed casting concentration spell shouts at 0 magicka.

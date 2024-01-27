@@ -225,12 +225,13 @@ class ConcHandler final : public RE::BSTEventSink<SKSE::ActionEvent>,
             return;
         }
         Clear(nullptr, nullptr);
-        if (av_owner->GetActorValue(RE::ActorValue::kMagicka) <= 0.f) {
+        if (!RE::PlayerCharacter::IsGodMode() && spell->CalculateMagickaCost(player) > 0.f
+            && av_owner->GetActorValue(RE::ActorValue::kMagicka) <= 0.f) {
             SKSE::log::trace("conc: {} -> {} not enough magicka", *shout, *spell);
             tes_util::ActorPlayMagicFailureSound(*player);
             tes_util::FlashMagickaBar();
-            // Required for Poll() to reset shout cooldown. Resetting cooldown in this function (in
-            // the same frame?) doesn't work.
+            // Setting current_spell_ is required in order to have Poll() reset shout cooldown.
+            // Resetting cooldown in this function (in the same frame?) doesn't work.
             current_spell_ = spell;
             return;
         }
