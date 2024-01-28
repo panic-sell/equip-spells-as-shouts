@@ -34,7 +34,6 @@ Video demo (make sure to enable captions):
 
 - When you're in thirdperson and sheathed, aimed shouts may be off from your crosshair. Unsheathing or switching to firstperson should fix this.
 - Spell shouts are subject to cooldowns from other shouts (since spell shouts are bona fide shouts).
-- This mod does not support simulating dual casting.
 - Custom per-spell-shout animations are possible with [Open Animation Replacer](https://www.nexusmods.com/skyrimspecialedition/mods/92109). The Miscellaneous files section of this mod contains an example you can reference. It doesn't include actual animations though, you'll need to get those separately.
 
 

@@ -1,7 +1,7 @@
 # Changelog
 
-## 1.x.x
-- In EquipSpellsAsShouts.json, add missing link to key names.
+## 1.0.3
+- In EquipSpellsAsShouts.json, add link documenting the list of valid key names for configuring key bindings.
 - Allow casting concentration spell shouts at 0 magicka if the spell actually costs no magicka.
 
 ## 1.0.2
