@@ -58,6 +58,7 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
 
     RE::BSEventNotifyControl
     ProcessEvent(const SKSE::ActionEvent* event, RE::BSTEventSource<SKSE::ActionEvent>*) override {
+        Prep(event);
         Cast(event);
         return RE::BSEventNotifyControl::kContinue;
     }
@@ -74,14 +75,31 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
     FafHandler& operator=(FafHandler&&) = delete;
 
     void
-    Cast(const SKSE::ActionEvent* event) {
-        if (!event || event->type != SKSE::ActionEvent::Type::kVoiceFire) {
-            return;
-        }
-        auto* player = event->actor;
+    Prep(const SKSE::ActionEvent* event) {
+        auto* player = event ? event->actor : nullptr;
         if (!player || !player->IsPlayerRef()) {
             return;
         }
+        if (event->type != SKSE::ActionEvent::Type::kVoiceCast) {
+            return;
+        }
+        shouting_ = true;
+    }
+
+    void
+    Cast(const SKSE::ActionEvent* event) {
+        auto* player = event ? event->actor : nullptr;
+        if (!player || !player->IsPlayerRef()) {
+            return;
+        }
+        if (event->type != SKSE::ActionEvent::Type::kVoiceFire) {
+            return;
+        }
+        if (!shouting_) {
+            return;
+        }
+        shouting_ = false;
+
         auto* high_data = tes_util::GetHighProcessData(*player);
         auto* av_owner = player->AsActorValueOwner();
         if (!high_data || !av_owner) {
@@ -145,6 +163,7 @@ class FafHandler final : public RE::BSTEventSink<SKSE::ActionEvent> {
         SKSE::log::debug("faf: casting {} -> {}", *shout, *spell);
     }
 
+    bool shouting_ = false;
     std::mutex& mutex_;
     Shoutmap& map_;
     const float magicka_scale_;
