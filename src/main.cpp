@@ -54,6 +54,8 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
         if (!msg || msg->type != SKSE::MessagingInterface::kDataLoaded) {
             return;
         }
+
+        gShoutmap = Shoutmap::New();
         if (!FafHandler::Init(gMutex, gShoutmap, gSettings)
             || !ConcHandler::Init(gMutex, gShoutmap, gSettings)
             || !AssignmentHandler::Init(gMutex, gShoutmap, gSettings)) {

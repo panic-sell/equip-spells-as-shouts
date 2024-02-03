@@ -2,6 +2,7 @@
 
 ## 1.x.x
 - Fix a bug where casting a spell shout causes the spell to be double-cast. This bug happened with modded spells that invoke shout effects through scripts.
+- Fix shouts not being available when starting a new game until after saving and loading.
 
 ## 1.0.3
 - In EquipSpellsAsShouts.json, add link documenting the list of valid key names for configuring key bindings.
