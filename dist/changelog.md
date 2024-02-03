@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.x.x
+## 1.0.4
 - Fix a bug where casting a spell shout causes the spell to be double-cast. This bug happened with modded spells that invoke shout effects through scripts.
 - Fix shouts not being available when starting a new game until after saving and loading.
 
